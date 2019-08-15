@@ -1,6 +1,6 @@
 use crate::{parser::CHECKSUM_LEN, Error};
 
-use std::{cmp, io::prelude::*, ops::Deref};
+use std::{cmp, io::{self, prelude::*}, ops::Deref};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {
@@ -77,6 +77,41 @@ impl UncheckedPacket {
         hash
     }
 
+    /// Returns true if the checksums match.
+    ///
+    /// ```rust
+    /// # use gdb_protocol::packet::{Kind, UncheckedPacket};
+    /// assert_eq!(UncheckedPacket {
+    ///     kind: Kind::Packet,
+    ///     data: b"Rust is an amazing programming language".to_vec(),
+    ///     checksum: *b"00",
+    /// }.is_valid(), false);
+    /// assert_eq!(UncheckedPacket {
+    ///     kind: Kind::Packet,
+    ///     data: b"Rust is an amazing programming language".to_vec(),
+    ///     checksum: *b"ZZ",
+    /// }.is_valid(), false);
+    /// assert_eq!(UncheckedPacket {
+    ///     kind: Kind::Packet,
+    ///     data: b"Rust is an amazing programming language".to_vec(),
+    ///     checksum: *b"C7",
+    /// }.is_valid(), true);
+    /// ```
+    pub fn is_valid(&self) -> bool {
+        self.expected_checksum().ok() == Some(self.actual_checksum())
+    }
+
+    /// Will return a checked packet if, and only if, the checksums
+    /// match. If you know the packet wasn't corrupted and want to
+    /// bypass the check, use `CheckedPacket::assume_checked`.
+    pub fn check(self) -> Option<CheckedPacket> {
+        if self.is_valid() {
+            Some(CheckedPacket::assume_checked(self))
+        } else {
+            None
+        }
+    }
+
     /// Encode the packet into a long binary string, written to a
     /// writer of choice. You can receive a Vec<u8> by taking
     /// advantage of the fact that they implement io::Write:
@@ -99,7 +134,7 @@ impl UncheckedPacket {
     /// shortened, however, this may change at any time and you should
     /// not rely on the output of this function being exactly one of
     /// multiple representations.
-    pub fn encode<W>(&self, w: &mut W) -> Result<(), Error>
+    pub fn encode<W>(&self, w: &mut W) -> io::Result<()>
     where
         W: Write,
     {
@@ -132,31 +167,6 @@ impl UncheckedPacket {
         w.write_all(&[b'#'])?;
         w.write_all(&self.checksum)?;
         Ok(())
-    }
-
-    /// Will return a checked packet if, and only if, the checksums
-    /// match. If you know the packet wasn't corrupted and want to
-    /// bypass the check, use `CheckedPacket::assume_checked`.
-    ///
-    /// ```rust
-    /// # use gdb_protocol::packet::{Kind, UncheckedPacket};
-    /// assert!(UncheckedPacket {
-    ///     kind: Kind::Packet,
-    ///     data: b"Rust is an amazing programming language".to_vec(),
-    ///     checksum: *b"00",
-    /// }.check().is_none());
-    /// assert!(UncheckedPacket {
-    ///     kind: Kind::Packet,
-    ///     data: b"Rust is an amazing programming language".to_vec(),
-    ///     checksum: *b"C7",
-    /// }.check().is_some());
-    /// ```
-    pub fn check(self) -> Option<CheckedPacket> {
-        if self.expected_checksum().ok() == Some(self.actual_checksum()) {
-            Some(CheckedPacket::assume_checked(self))
-        } else {
-            None
-        }
     }
 }
 

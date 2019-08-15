@@ -12,6 +12,7 @@ pub mod parser;
 #[derive(Debug)]
 #[cfg_attr(feature = "unstable", non_exhaustive)]
 pub enum Error {
+    InvalidChecksum,
     IoError(std::io::Error),
     NonNumber(String, std::num::ParseIntError),
     NonUtf8(Vec<u8>, std::str::Utf8Error),
@@ -19,6 +20,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Error::InvalidChecksum => write!(f, "a packet with invalid checksum was sent and denied"),
             Error::IoError(err) => write!(f, "i/o error: {}", err),
             Error::NonNumber(string, err) => {
                 write!(f, "expected number, found {:?}: {}", string, err)
@@ -37,7 +39,7 @@ impl std::error::Error for Error {
             Error::IoError(err) => Some(err),
             Error::NonNumber(_, err) => Some(err),
             Error::NonUtf8(_, err) => Some(err),
-            // TODO: _ => None,
+            _ => None,
         }
     }
 }

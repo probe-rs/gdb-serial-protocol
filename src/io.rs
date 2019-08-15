@@ -63,6 +63,7 @@ where
                 break Ok(None);
             }
 
+            // println!("{:?}", std::str::from_utf8(buf));
             let (read, packet) = self.parser.feed(buf)?;
             self.reader.consume(read);
 
@@ -84,14 +85,50 @@ where
             }
         }
     }
+    /// Sends a packet, retrying upon any failed checksum verification
+    /// on the remote.
     pub fn dispatch(&mut self, packet: &CheckedPacket) -> Result<(), Error> {
-        packet.encode(&mut self.writer)
+        loop {
+            packet.encode(&mut self.writer)?;
+            self.writer.flush()?;
+
+            // TCP guarantees the order of packets, so theoretically
+            // '+' or '-' will always be sent directly after a packet
+            // is received.
+            let buf = self.reader.fill_buf()?;
+            match buf.first() {
+                Some(b'+') => {
+                    self.reader.consume(1);
+                    break;
+                },
+                Some(b'-') => {
+                    self.reader.consume(1);
+                    if packet.is_valid() {
+                        // Well, ok, not our fault. The packet is
+                        // definitely valid, let's re-try
+                        continue;
+                    } else {
+                        // Oh... so the user actually tried to send a
+                        // packet with an invalid checksum. It's very
+                        // possible that they know what they're doing
+                        // though, perhaps they thought they disabled
+                        // the checksum verification. So let's not
+                        // panic.
+                        return Err(Error::InvalidChecksum);
+                    }
+                },
+                // Never mind... Just... hope for the best?
+                _ => break,
+            }
+        }
+        Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::packet::UncheckedPacket;
 
     #[test]
     fn it_acknowledges_valid_packets() {
@@ -120,5 +157,35 @@ mod tests {
             Some(CheckedPacket::from_data(Kind::Packet, b"packet".to_vec()))
         );
         assert_eq!(tester.response(), b"---+");
+    }
+    #[test]
+    fn it_dispatches() {
+        let mut input: &[u8] = b"";
+        let mut tester = GdbServer::tester(&mut input);
+        tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"hOi!!".to_vec())).unwrap();
+        assert_eq!(tester.response(), b"$hOi!!#62");
+    }
+    #[test]
+    fn it_resends() {
+        let mut input: &[u8] = b"-+";
+        let mut tester = GdbServer::tester(&mut input);
+        tester.dispatch(&CheckedPacket::from_data(Kind::Packet, b"IMBATMAN".to_vec())).unwrap();
+        assert_eq!(tester.response(), b"$IMBATMAN#49$IMBATMAN#49");
+    }
+    #[test]
+    fn it_complains_when_the_user_lies() {
+        let mut input: &[u8] = b"-";
+        let mut tester = GdbServer::tester(&mut input);
+        let result = tester.dispatch(&CheckedPacket::assume_checked(UncheckedPacket {
+            kind: Kind::Packet,
+            data: b"This sentence is false. (dontthinkaboutitdontthinkaboutit)".to_vec(),
+            checksum: *b"FF",
+        }));
+        if let Err(Error::InvalidChecksum) = result {
+        } else {
+            panic!("Expected error InvalidChecksum, got {:?}", result);
+        }
+        // It will still send once, just in case the user has disabled checksum verification
+        assert_eq!(tester.response(), b"$This sentence is false. (dontthinkaboutitdontthinkaboutit)#FF".to_vec());
     }
 }
