@@ -114,8 +114,8 @@ impl UncheckedPacket {
             let escape2 = memchr::memchr(b'*', remaining);
 
             let escape = cmp::min(
-                escape1.unwrap_or(remaining.len()),
-                escape2.unwrap_or(remaining.len()),
+                escape1.unwrap_or_else(|| remaining.len()),
+                escape2.unwrap_or_else(|| remaining.len()),
             );
 
             w.write_all(&remaining[..escape])?;

@@ -147,7 +147,7 @@ impl Parser {
                     self.state = State::Data;
                 }
 
-                Ok((start.map(|n| n + 1).unwrap_or(input.len()), None))
+                Ok((start.map(|n| n + 1).unwrap_or_else(|| input.len()), None))
             }
             State::Data => {
                 let end = memchr::memchr3(b'#', b'}', b'*', input);
@@ -161,8 +161,8 @@ impl Parser {
                 }
 
                 self.data
-                    .extend_from_slice(&input[..end.unwrap_or(input.len())]);
-                Ok((end.map(|n| n + 1).unwrap_or(input.len()), None))
+                    .extend_from_slice(&input[..end.unwrap_or_else(|| input.len())]);
+                Ok((end.map(|n| n + 1).unwrap_or_else(|| input.len()), None))
             }
             State::Escape => {
                 self.data.push(first ^ 0x20);
