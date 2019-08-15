@@ -1,5 +1,9 @@
 [package]
 name = "gdb-protocol"
+description = "An implementation of the GDB Remote Serial Protocol, following https://sourceware.org/gdb/onlinedocs/gdb/Remote-Protocol.html"
+repository = "https://gitlab.redox-os.org/redox-os/gdb-protocol"
+readme = "README.md"
+license = "MIT"
 version = "0.1.0"
 authors = ["jD91mZM2 <me@krake.one>"]
 edition = "2018"

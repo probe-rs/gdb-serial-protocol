@@ -1,4 +1,4 @@
-//! An implementation of GDB Remote Serial Protocol, following
+//! An implementation of the GDB Remote Serial Protocol, following
 //! https://sourceware.org/gdb/onlinedocs/gdb/Remote-Protocol.html
 
 #![cfg_attr(feature = "unstable", feature(non_exhaustive))]
