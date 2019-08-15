@@ -20,8 +20,14 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Error::IoError(err) => write!(f, "i/o error: {}", err),
-            Error::NonNumber(string, err) => write!(f, "expected number, found {:?}: {}", string, err),
-            Error::NonUtf8(bytes, err) => write!(f, "expected UTF-8 string in this context, found {:?}: {}", bytes, err),
+            Error::NonNumber(string, err) => {
+                write!(f, "expected number, found {:?}: {}", string, err)
+            }
+            Error::NonUtf8(bytes, err) => write!(
+                f,
+                "expected UTF-8 string in this context, found {:?}: {}",
+                bytes, err
+            ),
         }
     }
 }

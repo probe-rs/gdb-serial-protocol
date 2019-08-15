@@ -1,15 +1,11 @@
 use crate::{parser::CHECKSUM_LEN, Error};
 
-use std::{
-    cmp,
-    io::prelude::*,
-    ops::Deref,
-};
+use std::{cmp, io::prelude::*, ops::Deref};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Kind {
     Notification, // %
-    Packet, // $
+    Packet,       // $
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,7 +28,8 @@ impl UncheckedPacket {
     /// assert_eq!(packet.expected_checksum().unwrap(), 186);
     /// ```
     pub fn expected_checksum(&self) -> Result<u8, Error> {
-        let string = std::str::from_utf8(&self.checksum).map_err(|err| Error::NonUtf8(self.checksum.to_vec(), err))?;
+        let string = std::str::from_utf8(&self.checksum)
+            .map_err(|err| Error::NonUtf8(self.checksum.to_vec(), err))?;
         u8::from_str_radix(string, 16).map_err(|err| Error::NonNumber(string.to_owned(), err))
     }
 
@@ -103,7 +100,8 @@ impl UncheckedPacket {
     /// not rely on the output of this function being exactly one of
     /// multiple representations.
     pub fn encode<W>(&self, w: &mut W) -> Result<(), Error>
-        where W: Write
+    where
+        W: Write,
     {
         w.write_all(&[match self.kind {
             Kind::Notification => b'%',
@@ -220,7 +218,6 @@ impl CheckedPacket {
         write!(&mut packet.checksum[..], "{:02X}", actual).unwrap();
         Self::assume_checked(packet)
     }
-
 }
 // No DerefMut, because then the checksum/data could be modified
 impl Deref for CheckedPacket {

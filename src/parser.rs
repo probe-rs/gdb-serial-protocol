@@ -1,12 +1,15 @@
-use super::{Error, packet::{Kind, UncheckedPacket}};
+use super::{
+    packet::{Kind, UncheckedPacket},
+    Error,
+};
 
 use std::{cmp, iter, mem};
 
 enum State {
-    Type, // % or $
-    Data, // packet-data#
-    Escape, // "}x" = 'x' | 0x20
-    Repeat, // "x*y" = "x" * ('y' - 29)
+    Type,         // % or $
+    Data,         // packet-data#
+    Escape,       // "}x" = 'x' | 0x20
+    Repeat,       // "x*y" = "x" * ('y' - 29)
     Checksum(u8), // checksum
 }
 
@@ -126,7 +129,7 @@ impl Parser {
     fn feed_one(&mut self, input: &[u8]) -> Result<(usize, Option<UncheckedPacket>), Error> {
         let first = match input.first() {
             Some(b) => *b,
-            None => return Ok((0, None))
+            None => return Ok((0, None)),
         };
 
         match self.state {
@@ -145,7 +148,7 @@ impl Parser {
                 }
 
                 Ok((start.map(|n| n + 1).unwrap_or(input.len()), None))
-            },
+            }
             State::Data => {
                 let end = memchr::memchr3(b'#', b'}', b'*', input);
 
@@ -157,21 +160,25 @@ impl Parser {
                     None => (),
                 }
 
-                self.data.extend_from_slice(&input[..end.unwrap_or(input.len())]);
+                self.data
+                    .extend_from_slice(&input[..end.unwrap_or(input.len())]);
                 Ok((end.map(|n| n + 1).unwrap_or(input.len()), None))
-            },
+            }
             State::Escape => {
                 self.data.push(first ^ 0x20);
                 self.state = State::Data;
                 Ok((1, None))
-            },
+            }
             State::Repeat => {
-                let c = *self.data.last().expect("State::Repeat must only be used once data has been inserted");
+                let c = *self
+                    .data
+                    .last()
+                    .expect("State::Repeat must only be used once data has been inserted");
                 let count = first.saturating_sub(29);
                 self.data.extend(iter::repeat(c).take(count.into()));
                 self.state = State::Data;
                 Ok((1, None))
-            },
+            }
             State::Checksum(mut i) => {
                 let read = cmp::min((CHECKSUM_LEN - i) as usize, input.len());
 
@@ -184,13 +191,16 @@ impl Parser {
                 } else {
                     self.state = State::Type;
 
-                    Ok((read, Some(UncheckedPacket {
-                        kind: self.kind,
-                        data: mem::replace(&mut self.data, Vec::new()),
-                        checksum: self.checksum,
-                    })))
+                    Ok((
+                        read,
+                        Some(UncheckedPacket {
+                            kind: self.kind,
+                            data: mem::replace(&mut self.data, Vec::new()),
+                            checksum: self.checksum,
+                        }),
+                    ))
                 }
-            },
+            }
         }
     }
 }

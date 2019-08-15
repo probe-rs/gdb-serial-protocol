@@ -24,7 +24,8 @@ where
 
 impl GdbServer<BufReader<TcpStream>, TcpStream> {
     pub fn listen<A>(addr: A) -> Result<Self, Error>
-        where A: ToSocketAddrs
+    where
+        A: ToSocketAddrs,
     {
         let listener = TcpListener::bind(addr)?;
 
@@ -71,7 +72,7 @@ where
                         Some(checked) => {
                             self.writer.write_all(&[b'+'])?;
                             Some(checked)
-                        },
+                        }
                         None => {
                             self.writer.write_all(&[b'-'])?;
                             continue; // Retry
@@ -111,7 +112,8 @@ mod tests {
     }
     #[test]
     fn it_ignores_garbage() {
-        let mut input: &[u8] = b"<garbage here yada yaya> $packet#13 $packet#37 more garbage $GARBA#GE-- $packet#78";
+        let mut input: &[u8] =
+            b"<garbage here yada yaya> $packet#13 $packet#37 more garbage $GARBA#GE-- $packet#78";
         let mut tester = GdbServer::tester(&mut input);
         assert_eq!(
             tester.next_packet().unwrap(),
