@@ -1,0 +1,11 @@
+[package]
+name = "gdb-protocol"
+version = "0.1.0"
+authors = ["jD91mZM2 <me@krake.one>"]
+edition = "2018"
+
+[dependencies]
+memchr = "2.2.1"
+
+[features]
+unstable = []
